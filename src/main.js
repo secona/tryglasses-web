@@ -80,6 +80,25 @@ const programInfo = {
 };
 
 let scene = null;
+let oculos = null;
+
+async function loadOculos() {
+  try {
+    const objResponse = await fetch("/assets/45-oculos/oculos.obj");
+    const objString = await objResponse.text();
+    const obj = parseOBJ(objString);
+
+    const texMap = "/assets/45-oculos/glasses.png";
+
+    const buffers = initBuffers(gl, obj);
+    const texture = loadTexture(gl, texMap);
+    oculos = { buffers, texture };
+  } catch (error) {
+    console.error("Error loading oculos:", error);
+  }
+}
+
+loadOculos();
 
 function parseOBJ(text) {
   const positions = [];
@@ -91,23 +110,36 @@ function parseOBJ(text) {
   for (const line of text.split("\n")) {
     const parts = line.trim().split(" ");
     const type = parts.shift();
+    
     if (type === "v") {
       vertices.push(parts.map(parseFloat));
     } else if (type === "vt") {
       uvs.push(parts.map(parseFloat));
     } else if (type === "f") {
-      const f = [];
-      for (const p of parts) {
-        f.push(p.split("/").map((i) => parseInt(i, 10) - 1));
+      const currentFace = parts.map((p) => {
+        const [vIndex, vtIndex] = p.split("/");
+        return [
+           parseInt(vIndex, 10) - 1, 
+           vtIndex ? parseInt(vtIndex, 10) - 1 : 0
+        ];
+      });
+
+      for (let i = 1; i < currentFace.length - 1; i++) {
+        faces.push([currentFace[0], currentFace[i], currentFace[i + 1]]);
       }
-      faces.push(f);
     }
   }
 
   for (const f of faces) {
     for (const [vi, vti] of f) {
-      positions.push(...vertices[vi]);
-      texCoords.push(...uvs[vti]);
+      if (vertices[vi]) {
+        positions.push(...vertices[vi]);
+        if (uvs[vti]) {
+            texCoords.push(...uvs[vti]);
+        } else {
+            texCoords.push(0, 0);
+        }
+      }
     }
   }
 
@@ -256,26 +288,33 @@ function draw() {
   mat4RotateY(mv, -angleY);
   mat4Translate(mv, 0.0, 0.0, -6.0);
 
-  if (scene) {
-    const setAttr = (loc, buf, size) => {
-      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-      gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
-      gl.enableVertexAttribArray(loc);
-    };
+  const setAttr = (loc, buf, size) => {
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(loc);
+  };
 
-    setAttr(programInfo.attribLocations.pos, scene.buffers.pos, 3);
-    setAttr(programInfo.attribLocations.texCoord, scene.buffers.texCoord, 2);
-
-    gl.useProgram(programInfo.program);
-
-    gl.uniformMatrix4fv(programInfo.uniformLocations.proj, false, proj);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.mv, false, mv);
+  const drawObject = (object) => {
+    setAttr(programInfo.attribLocations.pos, object.buffers.pos, 3);
+    setAttr(programInfo.attribLocations.texCoord, object.buffers.texCoord, 2);
 
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, scene.texture);
+    gl.bindTexture(gl.TEXTURE_2D, object.texture);
     gl.uniform1i(programInfo.uniformLocations.sampler, 0);
 
-    gl.drawArrays(gl.TRIANGLES, 0, scene.buffers.count);
+    gl.drawArrays(gl.TRIANGLES, 0, object.buffers.count);
+  };
+
+  gl.useProgram(programInfo.program);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.proj, false, proj);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.mv, false, mv);
+
+  if (scene) {
+    drawObject(scene);
+  }
+
+  if (oculos) {
+    drawObject(oculos);
   }
 
   requestAnimationFrame(draw);
