@@ -9,28 +9,33 @@ import {
 const canvas = document.getElementById("glCanvas");
 const gl = canvas.getContext("webgl2");
 
+const objInput = document.getElementById("file-obj");
+const texInput = document.getElementById("file-texture");
+const loadBtn = document.getElementById("btn-load");
+
 if (!gl) {
   throw new Error("WebGL2 Unsupported!");
 }
 
 const vsSource = `#version 300 es
   in vec4 aVertexPosition;
-  in vec4 aVertexColor;
+  in vec2 aTextureCoord;
   uniform mat4 uModelViewMatrix;
   uniform mat4 uProjectionMatrix;
-  out lowp vec4 vColor;
+  out highp vec2 vTextureCoord;
   void main() {
     gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
-    vColor = aVertexColor;
+    vTextureCoord = aTextureCoord;
   }
 `;
 
 const fsSource = `#version 300 es
   precision lowp float;
-  in lowp vec4 vColor;
+  in highp vec2 vTextureCoord;
+  uniform sampler2D uSampler;
   out vec4 fragColor;
   void main() {
-    fragColor = vColor;
+    fragColor = texture(uSampler, vTextureCoord);
   }
 `;
 
@@ -65,124 +70,129 @@ const programInfo = {
   program: shaderProgram,
   attribLocations: {
     pos: gl.getAttribLocation(shaderProgram, "aVertexPosition"),
-    color: gl.getAttribLocation(shaderProgram, "aVertexColor"),
+    texCoord: gl.getAttribLocation(shaderProgram, "aTextureCoord"),
   },
   uniformLocations: {
     proj: gl.getUniformLocation(shaderProgram, "uProjectionMatrix"),
     mv: gl.getUniformLocation(shaderProgram, "uModelViewMatrix"),
+    sampler: gl.getUniformLocation(shaderProgram, "uSampler"),
   },
 };
 
-// --- Buffer Setup (Cube) ---
-function initBuffers(gl) {
-  const positions = [
-    -1,
-    -1,
-    1,
-    1,
-    -1,
-    1,
-    1,
-    1,
-    1,
-    -1,
-    1,
-    1, // Front
-    -1,
-    -1,
-    -1,
-    -1,
-    1,
-    -1,
-    1,
-    1,
-    -1,
-    1,
-    -1,
-    -1, // Back
-    -1,
-    1,
-    -1,
-    -1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    -1, // Top
-    -1,
-    -1,
-    -1,
-    1,
-    -1,
-    -1,
-    1,
-    -1,
-    1,
-    -1,
-    -1,
-    1, // Bottom
-    1,
-    -1,
-    -1,
-    1,
-    1,
-    -1,
-    1,
-    1,
-    1,
-    1,
-    -1,
-    1, // Right
-    -1,
-    -1,
-    -1,
-    -1,
-    -1,
-    1,
-    -1,
-    1,
-    1,
-    -1,
-    1,
-    -1, // Left
-  ];
+let scene = null;
 
-  const faceColors = [
-    [1, 1, 1, 1],
-    [1, 0, 0, 1],
-    [0, 1, 0, 1],
-    [0, 0, 1, 1],
-    [1, 1, 0, 1],
-    [1, 0, 1, 1],
-  ];
-  let colors = [];
-  faceColors.forEach((c) => colors.push(...c, ...c, ...c, ...c));
+function parseOBJ(text) {
+  const positions = [];
+  const texCoords = [];
+  const vertices = [];
+  const uvs = [];
+  const faces = [];
 
-  const indices = [
-    0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11, 12, 13, 14, 12, 14,
-    15, 16, 17, 18, 16, 18, 19, 20, 21, 22, 20, 22, 23,
-  ];
+  for (const line of text.split("\n")) {
+    const parts = line.trim().split(" ");
+    const type = parts.shift();
+    if (type === "v") {
+      vertices.push(parts.map(parseFloat));
+    } else if (type === "vt") {
+      uvs.push(parts.map(parseFloat));
+    } else if (type === "f") {
+      const f = [];
+      for (const p of parts) {
+        f.push(p.split("/").map((i) => parseInt(i, 10) - 1));
+      }
+      faces.push(f);
+    }
+  }
 
-  const createBuf = (type, data) => {
+  for (const f of faces) {
+    for (const [vi, vti] of f) {
+      positions.push(...vertices[vi]);
+      texCoords.push(...uvs[vti]);
+    }
+  }
+
+  return { positions, texCoords };
+}
+
+function initBuffers(gl, data) {
+  const createBuf = (type, d) => {
     const b = gl.createBuffer();
     gl.bindBuffer(type, b);
-    gl.bufferData(type, data, gl.STATIC_DRAW);
+    gl.bufferData(type, d, gl.STATIC_DRAW);
     return b;
   };
-
   return {
-    pos: createBuf(gl.ARRAY_BUFFER, new Float32Array(positions)),
-    color: createBuf(gl.ARRAY_BUFFER, new Float32Array(colors)),
-    indices: createBuf(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices)),
+    pos: createBuf(gl.ARRAY_BUFFER, new Float32Array(data.positions)),
+    texCoord: createBuf(gl.ARRAY_BUFFER, new Float32Array(data.texCoords)),
+    count: data.positions.length / 3,
   };
 }
 
-const buffers = initBuffers(gl);
+function loadTexture(gl, url) {
+  const texture = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, texture);
 
-let rotation = 0.0;
+  const level = 0;
+  const internalFormat = gl.RGBA;
+  const width = 1;
+  const height = 1;
+  const border = 0;
+  const srcFormat = gl.RGBA;
+  const srcType = gl.UNSIGNED_BYTE;
+  const pixel = new Uint8Array([0, 0, 255, 255]);
+  gl.texImage2D(
+    gl.TEXTURE_2D,
+    level,
+    internalFormat,
+    width,
+    height,
+    border,
+    srcFormat,
+    srcType,
+    pixel,
+  );
+
+  const image = new Image();
+  image.onload = () => {
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      level,
+      internalFormat,
+      srcFormat,
+      srcType,
+      image,
+    );
+    gl.generateMipmap(gl.TEXTURE_2D);
+  };
+  image.src = url;
+
+  return texture;
+}
+
+loadBtn.addEventListener("click", () => {
+  const objFile = objInput.files[0];
+  const texFile = texInput.files[0];
+
+  if (!objFile || !texFile) {
+    alert("Please select both an OBJ and a texture file.");
+    return;
+  }
+
+  const objReader = new FileReader();
+  objReader.onload = (e) => {
+    const objData = parseOBJ(e.target.result);
+    const buffers = initBuffers(gl, objData);
+    const texReader = new FileReader();
+    texReader.onload = (e) => {
+      const texture = loadTexture(gl, e.target.result);
+      scene = { buffers, texture };
+    };
+    texReader.readAsDataURL(texFile);
+  };
+  objReader.readAsText(objFile);
+});
 
 function resize(gl, canvas) {
   const dpr = window.devicePixelRatio || 1;
@@ -213,28 +223,30 @@ function draw() {
   );
 
   const mv = mat4Create();
-  mat4RotateX(mv, rotation * 0.7);
-  mat4RotateY(mv, rotation);
   mat4Translate(mv, 0.0, 0.0, -6.0);
 
-  const setAttr = (loc, buf, size) => {
-    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-    gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(loc);
-  };
+  if (scene) {
+    const setAttr = (loc, buf, size) => {
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(loc);
+    };
 
-  setAttr(programInfo.attribLocations.pos, buffers.pos, 3);
-  setAttr(programInfo.attribLocations.color, buffers.color, 4);
+    setAttr(programInfo.attribLocations.pos, scene.buffers.pos, 3);
+    setAttr(programInfo.attribLocations.texCoord, scene.buffers.texCoord, 2);
 
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
-  gl.useProgram(programInfo.program);
+    gl.useProgram(programInfo.program);
 
-  gl.uniformMatrix4fv(programInfo.uniformLocations.proj, false, proj);
-  gl.uniformMatrix4fv(programInfo.uniformLocations.mv, false, mv);
+    gl.uniformMatrix4fv(programInfo.uniformLocations.proj, false, proj);
+    gl.uniformMatrix4fv(programInfo.uniformLocations.mv, false, mv);
 
-  gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, scene.texture);
+    gl.uniform1i(programInfo.uniformLocations.sampler, 0);
 
-  rotation += 0.01;
+    gl.drawArrays(gl.TRIANGLES, 0, scene.buffers.count);
+  }
+
   requestAnimationFrame(draw);
 }
 
