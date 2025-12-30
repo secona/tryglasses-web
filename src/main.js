@@ -1,3 +1,4 @@
+import JSZip from "jszip";
 import {
   mat4Create,
   mat4Translate,
@@ -9,8 +10,7 @@ import {
 const canvas = document.getElementById("glCanvas");
 const gl = canvas.getContext("webgl2");
 
-const objInput = document.getElementById("file-obj");
-const texInput = document.getElementById("file-texture");
+const dataInput = document.getElementById("file-data");
 const loadBtn = document.getElementById("btn-load");
 
 if (!gl) {
@@ -171,27 +171,30 @@ function loadTexture(gl, url) {
   return texture;
 }
 
-loadBtn.addEventListener("click", () => {
-  const objFile = objInput.files[0];
-  const texFile = texInput.files[0];
+loadBtn.addEventListener("click", async () => {
+  const dataFile = dataInput.files[0];
 
-  if (!objFile || !texFile) {
-    alert("Please select both an OBJ and a texture file.");
+  if (!dataFile) {
+    alert("Please select a data file.");
     return;
   }
 
-  const objReader = new FileReader();
-  objReader.onload = (e) => {
-    const objData = parseOBJ(e.target.result);
-    const buffers = initBuffers(gl, objData);
-    const texReader = new FileReader();
-    texReader.onload = (e) => {
-      const texture = loadTexture(gl, e.target.result);
-      scene = { buffers, texture };
-    };
-    texReader.readAsDataURL(texFile);
-  };
-  objReader.readAsText(objFile);
+  try {
+    const data = await JSZip.loadAsync(dataFile);
+
+    const objString = await data.file("HRN_export/HRN_result.obj").async("string");
+    const obj = parseOBJ(objString);
+
+    const texMapBlob = await data.file("HRN_export/HRN_result.jpg").async("blob");
+    const texMap = URL.createObjectURL(texMapBlob);
+
+    const buffers = initBuffers(gl, obj);
+    const texture = loadTexture(gl, texMap);
+    scene = { buffers, texture };
+  } catch (error) {
+    alert("An error occurred");
+    console.error(error);
+  }
 });
 
 let angleX = 0;
