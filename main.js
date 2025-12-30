@@ -194,6 +194,32 @@ loadBtn.addEventListener("click", () => {
   objReader.readAsText(objFile);
 });
 
+let angleX = 0;
+let angleY = 0;
+let isDragging = false;
+let lastMouseX = 0;
+let lastMouseY = 0;
+
+canvas.addEventListener('mousedown', (e) => {
+  isDragging = true;
+  lastMouseX = e.clientX;
+  lastMouseY = e.clientY;
+});
+
+window.addEventListener('mouseup', () => isDragging = false);
+
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  const deltaX = e.clientX - lastMouseX;
+  const deltaY = e.clientY - lastMouseY;
+
+  lastMouseX = e.clientX;
+  lastMouseY = e.clientY;
+
+  angleY += deltaX * 0.01;
+  angleX -= deltaY * 0.01;
+});
+
 function resize(gl, canvas) {
   const dpr = window.devicePixelRatio || 1;
   const displayWidth = Math.round(canvas.clientWidth * dpr);
@@ -223,6 +249,8 @@ function draw() {
   );
 
   const mv = mat4Create();
+  mat4RotateX(mv, angleX);
+  mat4RotateY(mv, -angleY);
   mat4Translate(mv, 0.0, 0.0, -6.0);
 
   if (scene) {
