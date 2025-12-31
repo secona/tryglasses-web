@@ -32,6 +32,11 @@ This project uses external assets.
 ### 3D Models
 - https://free3d.com/3d-model/frame-glasses-314946.html
 
+### Portrait Examples
+- https://commons.wikimedia.org/wiki/File:Abraham_Lincoln_O-77_matte_collodion_print.jpg
+- https://commons.wikimedia.org/wiki/File:Tracy_Caldwell.jpg
+- https://commons.wikimedia.org/wiki/File:President_Barack_Obama.jpg
+
 ## Acknowledgements
 
 Thank you to the following for their contributions and resources:
