@@ -1,5 +1,4 @@
-import JSZip from "jszip";
-import { SceneObject }  from "./scene.js";
+import { SceneManager, SceneObject }  from "./scene.js";
 import {
   mat4Create,
   mat4Translate,
@@ -70,8 +69,9 @@ function initShaderProgram(gl, vs, fs) {
 }
 
 const state = {
-  scene: null,
+  head: null,
   oculos: null,
+  sceneManager: new SceneManager(),
   angleX: 0,
   angleY: 0,
   isDragging: false,
@@ -93,67 +93,11 @@ const programInfo = {
   },
 };
 
-async function loadOculos() {
-  try {
-    const objResponse = await fetch("/assets/45-oculos/oculos.obj");
-    const objString = await objResponse.text();
-    const obj = parseOBJ(objString);
-
-    const texMap = "/assets/45-oculos/glasses.png";
-
-    state.oculos = new SceneObject(gl, obj, texMap);
-  } catch (error) {
-    console.error("Error loading oculos:", error);
-  }
-}
-
-loadOculos();
-
-function parseOBJ(text) {
-  const positions = [];
-  const texCoords = [];
-  const vertices = [];
-  const uvs = [];
-  const faces = [];
-
-  for (const line of text.split("\n")) {
-    const parts = line.trim().split(" ");
-    const type = parts.shift();
-    
-    if (type === "v") {
-      vertices.push(parts.map(parseFloat));
-    } else if (type === "vt") {
-      uvs.push(parts.map(parseFloat));
-    } else if (type === "f") {
-      const currentFace = parts.map((p) => {
-        const [vIndex, vtIndex] = p.split("/");
-        return [
-           parseInt(vIndex, 10) - 1, 
-           vtIndex ? parseInt(vtIndex, 10) - 1 : 0
-        ];
-      });
-
-      for (let i = 1; i < currentFace.length - 1; i++) {
-        faces.push([currentFace[0], currentFace[i], currentFace[i + 1]]);
-      }
-    }
-  }
-
-  for (const f of faces) {
-    for (const [vi, vti] of f) {
-      if (vertices[vi]) {
-        positions.push(...vertices[vi]);
-        if (uvs[vti]) {
-            texCoords.push(...uvs[vti]);
-        } else {
-            texCoords.push(0, 0);
-        }
-      }
-    }
-  }
-
-  return { positions, texCoords };
-}
+state.sceneManager.loadGlasses(
+  gl,
+  "/assets/45-oculos/oculos.obj",
+  "/assets/45-oculos/glasses.png",
+);
 
 loadBtn.addEventListener("click", async () => {
   const dataFile = dataInput.files[0];
@@ -164,15 +108,7 @@ loadBtn.addEventListener("click", async () => {
   }
 
   try {
-    const data = await JSZip.loadAsync(dataFile);
-
-    const objString = await data.file("HRN_export/HRN_result.obj").async("string");
-    const obj = parseOBJ(objString);
-
-    const texMapBlob = await data.file("HRN_export/HRN_result.jpg").async("blob");
-    const texMap = URL.createObjectURL(texMapBlob);
-
-    state.scene = new SceneObject(gl, obj, texMap);
+    state.sceneManager.loadHead(gl, dataFile);
   } catch (error) {
     alert("An error occurred");
     console.error(error);
@@ -230,15 +166,8 @@ function draw() {
   gl.useProgram(programInfo.program);
   gl.uniformMatrix4fv(programInfo.uniformLocations.proj, false, proj);
 
-  if (state.scene) {
-    state.scene.tz = -6;
-    state.scene.draw(gl, programInfo);
-  }
-
-  if (state.oculos) {
-    state.oculos.tz = -6;
-    state.oculos.draw(gl, programInfo);
-  }
+  state.sceneManager.rotateHead(state.angleX, -state.angleY);
+  state.sceneManager.draw(gl, programInfo);
 
   requestAnimationFrame(draw);
 }

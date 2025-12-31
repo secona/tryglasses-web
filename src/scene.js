@@ -1,3 +1,4 @@
+import JSZip from "jszip";
 import {
   mat4Create,
   mat4Translate,
@@ -7,6 +8,66 @@ import {
   mat4Scale,
   mat4Mul,
 } from "./mat4.js";
+
+export class SceneManager {
+  constructor() {
+    this.head = null;
+    this.glasses = null;
+  }
+
+  async loadGlasses(gl, objURL, texURL) {
+    try {
+      const objResponse = await fetch(objURL);
+      const objString = await objResponse.text();
+      const obj = parseOBJ(objString);
+
+      this.glasses = new SceneObject(gl, obj, texURL);
+    } catch (error) {
+      console.error("Error loading glasses:", error);
+    }
+  }
+
+  async loadHead(gl, dataFile) {
+    try {
+      const data = await JSZip.loadAsync(dataFile);
+
+      const objString = await data.file("HRN_export/HRN_result.obj").async("string");
+      const obj = parseOBJ(objString);
+
+      const texMapBlob = await data.file("HRN_export/HRN_result.jpg").async("blob");
+      const texMap = URL.createObjectURL(texMapBlob);
+
+      this.head = new SceneObject(gl, obj, texMap);
+
+      if (this.glasses) {
+        this.head.addChild(this.glasses);
+      }
+    } catch (error) {
+      alert("An error occurred");
+      console.error(error);
+    }
+  }
+
+  rotateHead(angleX, angleY) {
+    if (this.head) {
+      this.head.rx = angleX;
+      this.head.ry = angleY;
+    }
+  }
+
+  draw(gl, programInfo) {
+    if (this.head) {
+      this.head.tz = -6;
+      this.head.draw(gl, programInfo);
+
+      if (this.glasses) {
+        this.glasses.tz = 0.6;
+        this.glasses.ty = 0.3;
+        this.glasses.draw(gl, programInfo);
+      }
+    }
+  }
+}
 
 export class SceneObject {
   constructor(gl, obj, texMap) {
@@ -142,4 +203,50 @@ function loadTexture(gl, url) {
   image.src = url;
 
   return texture;
+}
+
+function parseOBJ(text) {
+  const positions = [];
+  const texCoords = [];
+  const vertices = [];
+  const uvs = [];
+  const faces = [];
+
+  for (const line of text.split("\n")) {
+    const parts = line.trim().split(" ");
+    const type = parts.shift();
+    
+    if (type === "v") {
+      vertices.push(parts.map(parseFloat));
+    } else if (type === "vt") {
+      uvs.push(parts.map(parseFloat));
+    } else if (type === "f") {
+      const currentFace = parts.map((p) => {
+        const [vIndex, vtIndex] = p.split("/");
+        return [
+           parseInt(vIndex, 10) - 1, 
+           vtIndex ? parseInt(vtIndex, 10) - 1 : 0
+        ];
+      });
+
+      for (let i = 1; i < currentFace.length - 1; i++) {
+        faces.push([currentFace[0], currentFace[i], currentFace[i + 1]]);
+      }
+    }
+  }
+
+  for (const f of faces) {
+    for (const [vi, vti] of f) {
+      if (vertices[vi]) {
+        positions.push(...vertices[vi]);
+        if (uvs[vti]) {
+            texCoords.push(...uvs[vti]);
+        } else {
+            texCoords.push(0, 0);
+        }
+      }
+    }
+  }
+
+  return { positions, texCoords };
 }
