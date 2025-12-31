@@ -1,4 +1,5 @@
 import { SceneManager, SceneObject }  from "./scene.js";
+import { HeadData } from "./head.js";
 import {
   mat4Create,
   mat4Translate,
@@ -108,7 +109,8 @@ loadBtn.addEventListener("click", async () => {
   }
 
   try {
-    state.sceneManager.loadHead(gl, dataFile);
+    const headData = await HeadData.load(dataFile);
+    state.sceneManager.loadHead(gl, headData);
   } catch (error) {
     alert("An error occurred");
     console.error(error);
