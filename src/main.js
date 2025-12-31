@@ -21,9 +21,12 @@ if (!gl) {
 const vsSource = `#version 300 es
   in vec4 aVertexPosition;
   in vec2 aTextureCoord;
+
   uniform mat4 uModelViewMatrix;
   uniform mat4 uProjectionMatrix;
+
   out highp vec2 vTextureCoord;
+
   void main() {
     gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
     vTextureCoord = aTextureCoord;
@@ -224,20 +227,16 @@ function draw() {
     100.0,
   );
 
-  const mv = mat4Create();
-  mat4RotateX(mv, state.angleX);
-  mat4RotateY(mv, -state.angleY);
-  mat4Translate(mv, 0.0, 0.0, -6.0);
-
   gl.useProgram(programInfo.program);
   gl.uniformMatrix4fv(programInfo.uniformLocations.proj, false, proj);
-  gl.uniformMatrix4fv(programInfo.uniformLocations.mv, false, mv);
 
   if (state.scene) {
+    state.scene.tz = -6;
     state.scene.draw(gl, programInfo);
   }
 
   if (state.oculos) {
+    state.oculos.tz = -6;
     state.oculos.draw(gl, programInfo);
   }
 

@@ -1,3 +1,13 @@
+import {
+  mat4Create,
+  mat4Translate,
+  mat4RotateX,
+  mat4RotateY,
+  mat4RotateZ,
+  mat4Scale,
+  mat4Mul,
+} from "./mat4.js";
+
 export class SceneObject {
   constructor(gl, obj, texMap) {
     this.buffers = initBuffers(gl, obj);
@@ -41,9 +51,9 @@ export class SceneObject {
 
     const M = mat4Create();
     mat4Mul(M, T, Rz);
-    mat4Mul(M, T, Ry);
-    mat4Mul(M, T, Rx);
-    mat4Mul(M, T, S);
+    mat4Mul(M, M, Ry);
+    mat4Mul(M, M, Rx);
+    mat4Mul(M, M, S);
     return M;
   }
 
@@ -66,6 +76,8 @@ export class SceneObject {
 
     setAttr(programInfo.attribLocations.pos, this.buffers.pos, 3);
     setAttr(programInfo.attribLocations.texCoord, this.buffers.texCoord, 2);
+
+    gl.uniformMatrix4fv(programInfo.uniformLocations.mv, false, this.getModelMatrix());
 
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
