@@ -78,6 +78,9 @@ const state = {
   isDragging: false,
   lastMouseX: 0,
   lastMouseY: 0,
+  glassesX: 0,
+  glassesY: 0,
+  glassesZ: 0,
 };
 
 const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
@@ -115,6 +118,33 @@ loadBtn.addEventListener("click", async () => {
     alert("An error occurred");
     console.error(error);
   }
+});
+
+[
+  ["translate-x", "valX"],
+  ["translate-y", "valY"],
+  ["translate-z", "valZ"],
+].forEach(([sliderId, valueId]) => {
+  const slider = document.getElementById(sliderId);
+  const value = document.getElementById(valueId);
+
+  value.textContent = Number(slider.value).toFixed(2);
+
+  slider.addEventListener("input", () => {
+    value.textContent = Number(slider.value).toFixed(2);
+  });
+});
+
+document.getElementById("translate-x").addEventListener("input", (e) => {
+  state.glassesX = Number(e.target.value);
+});
+
+document.getElementById("translate-y").addEventListener("input", (e) => {
+  state.glassesY = Number(e.target.value);
+});
+
+document.getElementById("translate-z").addEventListener("input", (e) => {
+  state.glassesZ = Number(e.target.value);
 });
 
 canvas.addEventListener('mousedown', (e) => {
@@ -168,6 +198,7 @@ function draw() {
   gl.useProgram(programInfo.program);
   gl.uniformMatrix4fv(programInfo.uniformLocations.proj, false, proj);
 
+  state.sceneManager.translateGlasses(state.glassesX, state.glassesY, state.glassesZ);
   state.sceneManager.rotateHead(state.angleX, -state.angleY);
   state.sceneManager.draw(gl, programInfo);
 

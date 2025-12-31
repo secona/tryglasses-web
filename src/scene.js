@@ -48,14 +48,20 @@ export class SceneManager {
     }
   }
 
+  translateGlasses(x, y, z) {
+    if (this.glasses) {
+      this.glasses.tx = x;
+      this.glasses.ty = y;
+      this.glasses.tz = z;
+    }
+  }
+
   draw(gl, programInfo) {
     if (this.head) {
       this.head.tz = -6;
       this.head.draw(gl, programInfo);
 
       if (this.glasses) {
-        this.glasses.tz = 0.6;
-        this.glasses.ty = 0.3;
         this.glasses.draw(gl, programInfo);
       }
     }
