@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import { SceneObject }  from "./scene.js";
 import {
   mat4Create,
   mat4Translate,
@@ -97,9 +98,7 @@ async function loadOculos() {
 
     const texMap = "/assets/45-oculos/glasses.png";
 
-    const buffers = initBuffers(gl, obj);
-    const texture = loadTexture(gl, texMap);
-    state.oculos = { buffers, texture };
+    state.oculos = new SceneObject(gl, obj, texMap);
   } catch (error) {
     console.error("Error loading oculos:", error);
   }
@@ -153,63 +152,6 @@ function parseOBJ(text) {
   return { positions, texCoords };
 }
 
-function initBuffers(gl, data) {
-  const createBuf = (type, d) => {
-    const b = gl.createBuffer();
-    gl.bindBuffer(type, b);
-    gl.bufferData(type, d, gl.STATIC_DRAW);
-    return b;
-  };
-  return {
-    pos: createBuf(gl.ARRAY_BUFFER, new Float32Array(data.positions)),
-    texCoord: createBuf(gl.ARRAY_BUFFER, new Float32Array(data.texCoords)),
-    count: data.positions.length / 3,
-  };
-}
-
-function loadTexture(gl, url) {
-  const texture = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, texture);
-
-  const level = 0;
-  const internalFormat = gl.RGBA;
-  const width = 1;
-  const height = 1;
-  const border = 0;
-  const srcFormat = gl.RGBA;
-  const srcType = gl.UNSIGNED_BYTE;
-  const pixel = new Uint8Array([0, 0, 255, 255]);
-  gl.texImage2D(
-    gl.TEXTURE_2D,
-    level,
-    internalFormat,
-    width,
-    height,
-    border,
-    srcFormat,
-    srcType,
-    pixel,
-  );
-
-  const image = new Image();
-  image.onload = () => {
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      level,
-      internalFormat,
-      srcFormat,
-      srcType,
-      image,
-    );
-    gl.generateMipmap(gl.TEXTURE_2D);
-  };
-  image.src = url;
-
-  return texture;
-}
-
 loadBtn.addEventListener("click", async () => {
   const dataFile = dataInput.files[0];
 
@@ -227,9 +169,7 @@ loadBtn.addEventListener("click", async () => {
     const texMapBlob = await data.file("HRN_export/HRN_result.jpg").async("blob");
     const texMap = URL.createObjectURL(texMapBlob);
 
-    const buffers = initBuffers(gl, obj);
-    const texture = loadTexture(gl, texMap);
-    state.scene = { buffers, texture };
+    state.scene = new SceneObject(gl, obj, texMap);
   } catch (error) {
     alert("An error occurred");
     console.error(error);
@@ -289,33 +229,16 @@ function draw() {
   mat4RotateY(mv, -state.angleY);
   mat4Translate(mv, 0.0, 0.0, -6.0);
 
-  const setAttr = (loc, buf, size) => {
-    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-    gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(loc);
-  };
-
-  const drawObject = (object) => {
-    setAttr(programInfo.attribLocations.pos, object.buffers.pos, 3);
-    setAttr(programInfo.attribLocations.texCoord, object.buffers.texCoord, 2);
-
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, object.texture);
-    gl.uniform1i(programInfo.uniformLocations.sampler, 0);
-
-    gl.drawArrays(gl.TRIANGLES, 0, object.buffers.count);
-  };
-
   gl.useProgram(programInfo.program);
   gl.uniformMatrix4fv(programInfo.uniformLocations.proj, false, proj);
   gl.uniformMatrix4fv(programInfo.uniformLocations.mv, false, mv);
 
   if (state.scene) {
-    drawObject(state.scene);
+    state.scene.draw(gl, programInfo);
   }
 
   if (state.oculos) {
-    drawObject(state.oculos);
+    state.oculos.draw(gl, programInfo);
   }
 
   requestAnimationFrame(draw);
