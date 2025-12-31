@@ -65,6 +65,16 @@ function initShaderProgram(gl, vs, fs) {
   return prog;
 }
 
+const state = {
+  scene: null,
+  oculos: null,
+  angleX: 0,
+  angleY: 0,
+  isDragging: false,
+  lastMouseX: 0,
+  lastMouseY: 0,
+};
+
 const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
 const programInfo = {
   program: shaderProgram,
@@ -79,9 +89,6 @@ const programInfo = {
   },
 };
 
-let scene = null;
-let oculos = null;
-
 async function loadOculos() {
   try {
     const objResponse = await fetch("/assets/45-oculos/oculos.obj");
@@ -92,7 +99,7 @@ async function loadOculos() {
 
     const buffers = initBuffers(gl, obj);
     const texture = loadTexture(gl, texMap);
-    oculos = { buffers, texture };
+    state.oculos = { buffers, texture };
   } catch (error) {
     console.error("Error loading oculos:", error);
   }
@@ -222,37 +229,31 @@ loadBtn.addEventListener("click", async () => {
 
     const buffers = initBuffers(gl, obj);
     const texture = loadTexture(gl, texMap);
-    scene = { buffers, texture };
+    state.scene = { buffers, texture };
   } catch (error) {
     alert("An error occurred");
     console.error(error);
   }
 });
 
-let angleX = 0;
-let angleY = 0;
-let isDragging = false;
-let lastMouseX = 0;
-let lastMouseY = 0;
-
 canvas.addEventListener('mousedown', (e) => {
-  isDragging = true;
-  lastMouseX = e.clientX;
-  lastMouseY = e.clientY;
+  state.isDragging = true;
+  state.lastMouseX = e.clientX;
+  state.lastMouseY = e.clientY;
 });
 
-window.addEventListener('mouseup', () => isDragging = false);
+window.addEventListener('mouseup', () => state.isDragging = false);
 
 window.addEventListener('mousemove', (e) => {
-  if (!isDragging) return;
-  const deltaX = e.clientX - lastMouseX;
-  const deltaY = e.clientY - lastMouseY;
+  if (!state.isDragging) return;
+  const deltaX = e.clientX - state.lastMouseX;
+  const deltaY = e.clientY - state.lastMouseY;
 
-  lastMouseX = e.clientX;
-  lastMouseY = e.clientY;
+  state.lastMouseX = e.clientX;
+  state.lastMouseY = e.clientY;
 
-  angleY += deltaX * 0.01;
-  angleX -= deltaY * 0.01;
+  state.angleY -= deltaX * 0.01;
+  state.angleX += deltaY * 0.01;
 });
 
 function resize(gl, canvas) {
@@ -284,8 +285,8 @@ function draw() {
   );
 
   const mv = mat4Create();
-  mat4RotateX(mv, angleX);
-  mat4RotateY(mv, -angleY);
+  mat4RotateX(mv, state.angleX);
+  mat4RotateY(mv, -state.angleY);
   mat4Translate(mv, 0.0, 0.0, -6.0);
 
   const setAttr = (loc, buf, size) => {
@@ -309,12 +310,12 @@ function draw() {
   gl.uniformMatrix4fv(programInfo.uniformLocations.proj, false, proj);
   gl.uniformMatrix4fv(programInfo.uniformLocations.mv, false, mv);
 
-  if (scene) {
-    drawObject(scene);
+  if (state.scene) {
+    drawObject(state.scene);
   }
 
-  if (oculos) {
-    drawObject(oculos);
+  if (state.oculos) {
+    drawObject(state.oculos);
   }
 
   requestAnimationFrame(draw);
