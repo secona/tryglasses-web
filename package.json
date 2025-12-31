@@ -15,6 +15,7 @@
     "@tailwindcss/vite": "^4.1.18",
     "daisyui": "^5.5.14",
     "jszip": "^3.10.1",
+    "npyjs": "^1.0.4",
     "tailwindcss": "^4.1.18"
   }
 }
