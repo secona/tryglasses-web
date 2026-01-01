@@ -22,7 +22,7 @@ export class SceneManager {
       const objString = await objResponse.text();
       const obj = parseOBJ(objString);
 
-      this.glasses = new SceneObject(gl, obj, texURL);
+      this.glasses = new SceneObject(this.gl, obj, texURL);
     } catch (error) {
       console.error("Error loading glasses:", error);
     }
@@ -31,7 +31,7 @@ export class SceneManager {
   async loadHead(headData) {
     try {
       this.headData = headData;
-      this.head = new SceneObject(gl, headData.obj, headData.texMap);
+      this.head = new SceneObject(this.gl, headData.obj, headData.texMap);
 
       if (this.glasses) {
         this.head.addChild(this.glasses);
@@ -57,13 +57,13 @@ export class SceneManager {
     }
   }
 
-  draw(programInfo) {
+  draw(mainView) {
     if (this.head) {
       this.head.tz = -6;
-      this.head.draw(programInfo);
+      this.head.draw(mainView);
 
       if (this.glasses) {
-        this.glasses.draw(programInfo);
+        this.glasses.draw(mainView);
       }
     }
   }
@@ -129,21 +129,22 @@ export class SceneObject {
     return local;
   }
 
-  draw(programInfo) {
+  draw(mainView) {
+    const gl = this.gl;
+
     const setAttr = (loc, buf, size) => {
       gl.bindBuffer(gl.ARRAY_BUFFER, buf);
       gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
       gl.enableVertexAttribArray(loc);
     };
 
-    setAttr(programInfo.attribLocations.pos, this.buffers.pos, 3);
-    setAttr(programInfo.attribLocations.texCoord, this.buffers.texCoord, 2);
+    setAttr(mainView.attribLocations.pos, this.buffers.pos, 3);
+    setAttr(mainView.attribLocations.texCoord, this.buffers.texCoord, 2);
 
-    gl.uniformMatrix4fv(programInfo.uniformLocations.mv, false, this.getModelMatrix());
+    gl.uniformMatrix4fv(mainView.uniformLocations.mv, false, this.getModelMatrix());
 
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
-    gl.uniform1i(programInfo.uniformLocations.sampler, 0);
 
     gl.drawArrays(gl.TRIANGLES, 0, this.buffers.count);
   }
