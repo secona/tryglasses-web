@@ -4,9 +4,11 @@ export class Controls {
   constructor() {
     this.loadSubs = [];
     this.glassesSubs = [];
+    this.renderSubs = [];
 
     const dataInput = document.getElementById("file-data");
     const loadBtn = document.getElementById("btn-load");
+    const renderBtn = document.getElementById("btn-render");
 
     loadBtn.addEventListener("click", async () => {
       const dataFile = dataInput.files[0];
@@ -24,6 +26,12 @@ export class Controls {
       } catch (error) {
         alert("An error occurred");
         console.error(error);
+      }
+    });
+
+    renderBtn.addEventListener("click", () => {
+      for (const sub of this.renderSubs) {
+        sub();
       }
     });
 
@@ -67,5 +75,9 @@ export class Controls {
 
   subscribeGlasses(fn) {
     this.glassesSubs.push(fn);
+  }
+
+  subscribeRender(fn) {
+    this.renderSubs.push(fn);
   }
 }
