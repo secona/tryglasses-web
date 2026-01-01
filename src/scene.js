@@ -10,12 +10,13 @@ import {
 import { parseOBJ } from "./util.js";
 
 export class SceneManager {
-  constructor() {
+  constructor(gl) {
+    this.gl = gl;
     this.head = null;
     this.glasses = null;
   }
 
-  async loadGlasses(gl, objURL, texURL) {
+  async loadGlasses(objURL, texURL) {
     try {
       const objResponse = await fetch(objURL);
       const objString = await objResponse.text();
@@ -27,7 +28,7 @@ export class SceneManager {
     }
   }
 
-  async loadHead(gl, headData) {
+  async loadHead(headData) {
     try {
       this.headData = headData;
       this.head = new SceneObject(gl, headData.obj, headData.texMap);
@@ -56,13 +57,13 @@ export class SceneManager {
     }
   }
 
-  draw(gl, programInfo) {
+  draw(programInfo) {
     if (this.head) {
       this.head.tz = -6;
-      this.head.draw(gl, programInfo);
+      this.head.draw(programInfo);
 
       if (this.glasses) {
-        this.glasses.draw(gl, programInfo);
+        this.glasses.draw(programInfo);
       }
     }
   }
@@ -70,6 +71,7 @@ export class SceneManager {
 
 export class SceneObject {
   constructor(gl, obj, texMap) {
+    this.gl = gl;
     this.buffers = initBuffers(gl, obj);
     this.texture = loadTexture(gl, texMap);
 
@@ -127,7 +129,7 @@ export class SceneObject {
     return local;
   }
 
-  draw(gl, programInfo) {
+  draw(programInfo) {
     const setAttr = (loc, buf, size) => {
       gl.bindBuffer(gl.ARRAY_BUFFER, buf);
       gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);

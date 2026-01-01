@@ -70,7 +70,7 @@ function initShaderProgram(gl, vs, fs) {
 }
 
 const state = {
-  sceneManager: new SceneManager(),
+  sceneManager: new SceneManager(gl),
   angleX: 0,
   angleY: 0,
   isDragging: false,
@@ -96,7 +96,6 @@ const programInfo = {
 };
 
 state.sceneManager.loadGlasses(
-  gl,
   "/assets/45-oculos/oculos.obj",
   "/assets/45-oculos/glasses.png",
 );
@@ -111,7 +110,7 @@ loadBtn.addEventListener("click", async () => {
 
   try {
     const headData = await HeadData.load(dataFile);
-    state.sceneManager.loadHead(gl, headData);
+    state.sceneManager.loadHead(headData);
   } catch (error) {
     alert("An error occurred");
     console.error(error);
@@ -198,7 +197,7 @@ function draw() {
 
   state.sceneManager.translateGlasses(state.glassesX, state.glassesY, state.glassesZ);
   state.sceneManager.rotateHead(state.angleX, -state.angleY);
-  state.sceneManager.draw(gl, programInfo);
+  state.sceneManager.draw(programInfo);
 
   requestAnimationFrame(draw);
 }
