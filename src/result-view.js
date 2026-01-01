@@ -81,10 +81,14 @@ export class ResultView {
       });
 
     document.getElementById("btn-save-render").addEventListener("click", () => {
-      const link = document.createElement("a");
-      link.download = "glasses_render.png";
-      link.href = canvas.toDataURL();
-      link.click();
+      this.drawScene();
+
+      requestAnimationFrame(() => {
+        const link = document.createElement("a");
+        link.download = "glasses_render.png";
+        link.href = canvas.toDataURL();
+        link.click();
+      });
     });
   }
 
