@@ -1,3 +1,13 @@
+import { SceneManager, SceneObject }  from "./scene.js";
+import { HeadData } from "./head.js";
+import {
+  mat4Create,
+  mat4Translate,
+  mat4Perspective,
+  mat4RotateX,
+  mat4RotateY,
+} from "./mat4.js";
+
 const vsSource = `#version 300 es
   in vec4 aVertexPosition;
   in vec2 aTextureCoord;
@@ -24,19 +34,161 @@ const fsSource = `#version 300 es
 `;
 
 export class MainView {
-  constructor(gl) {
-    this.program = this.initShaderProgram(gl, vsSource, fsSource);
+  constructor() {
+    const canvas = document.getElementById("glCanvas");
+    this.canvas = canvas;
+
+    const gl = canvas.getContext("webgl2");
+    this.gl = gl;
+
+    if (!gl) {
+      throw new Error("WebGL2 Unsupported!");
+    }
+
+    const program = this.initShaderProgram(gl, vsSource, fsSource);
+    this.program = program;
+
+    const sceneManager = new SceneManager(gl);
+    this.sceneManager = sceneManager;
 
     this.attribLocations = {
-      pos: gl.getAttribLocation(this.program, "aVertexPosition"),
-      texCoord: gl.getAttribLocation(this.program, "aTextureCoord"),
+      pos: gl.getAttribLocation(program, "aVertexPosition"),
+      texCoord: gl.getAttribLocation(program, "aTextureCoord"),
     };
 
     this.uniformLocations = {
-      proj: gl.getUniformLocation(this.program, "uProjectionMatrix"),
-      mv: gl.getUniformLocation(this.program, "uModelViewMatrix"),
-      sampler: gl.getUniformLocation(this.program, "uSampler"),
+      proj: gl.getUniformLocation(program, "uProjectionMatrix"),
+      mv: gl.getUniformLocation(program, "uModelViewMatrix"),
+      sampler: gl.getUniformLocation(program, "uSampler"),
     };
+
+    this.angleX = 0;
+    this.angleY = 0;
+    this.isDragging = false;
+    this.lastMouseX = 0;
+    this.lastMouseY = 0;
+    this.glassesX = 0;
+    this.glassesY = 0;
+    this.glassesZ = 0;
+  }
+
+  run() {
+    const gl = this.gl;
+    const canvas = this.canvas;
+
+    function resize(gl, canvas) {
+      const dpr = window.devicePixelRatio || 1;
+      const displayWidth = Math.round(canvas.clientWidth * dpr);
+      const displayHeight = Math.round(canvas.clientHeight * dpr);
+
+      if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
+        canvas.width = displayWidth;
+        canvas.height = displayHeight;
+        gl.viewport(0, 0, canvas.width, canvas.height);
+      }
+    }
+
+    const draw = () => {
+      resize(gl, canvas);
+
+      gl.clearColor(0.1, 0.1, 0.1, 1.0);
+      gl.enable(gl.DEPTH_TEST);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+      const proj = mat4Create();
+      mat4Perspective(
+        proj,
+        45,
+        canvas.clientWidth / canvas.clientHeight,
+        0.1,
+        100.0,
+      );
+
+      gl.useProgram(this.program);
+      gl.uniformMatrix4fv(this.uniformLocations.proj, false, proj);
+
+      this.sceneManager.translateGlasses(this.glassesX, this.glassesY, this.glassesZ);
+      this.sceneManager.rotateHead(this.angleX, -this.angleY);
+      this.sceneManager.draw(this);
+
+      requestAnimationFrame(draw);
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  load() {
+    this.sceneManager.loadGlasses(
+      "/assets/45-oculos/oculos.obj",
+      "/assets/45-oculos/glasses.png",
+    );
+
+    const dataInput = document.getElementById("file-data");
+    const loadBtn = document.getElementById("btn-load");
+
+    loadBtn.addEventListener("click", async () => {
+      const dataFile = dataInput.files[0];
+
+      if (!dataFile) {
+        alert("Please select a data file.");
+        return;
+      }
+
+      try {
+        const headData = await HeadData.load(dataFile);
+        this.sceneManager.loadHead(headData);
+      } catch (error) {
+        alert("An error occurred");
+        console.error(error);
+      }
+    });
+
+    [
+      ["translate-x", "valX"],
+      ["translate-y", "valY"],
+      ["translate-z", "valZ"],
+    ].forEach(([sliderId, valueId]) => {
+      const slider = document.getElementById(sliderId);
+      const value = document.getElementById(valueId);
+
+      value.textContent = Number(slider.value).toFixed(2);
+
+      slider.addEventListener("input", () => {
+        value.textContent = Number(slider.value).toFixed(2);
+      });
+    });
+
+    document.getElementById("translate-x").addEventListener("input", (e) => {
+      this.glassesX = Number(e.target.value);
+    });
+
+    document.getElementById("translate-y").addEventListener("input", (e) => {
+      this.glassesY = Number(e.target.value);
+    });
+
+    document.getElementById("translate-z").addEventListener("input", (e) => {
+      this.glassesZ = Number(e.target.value);
+    });
+
+    this.canvas.addEventListener('mousedown', (e) => {
+      this.isDragging = true;
+      this.lastMouseX = e.clientX;
+      this.lastMouseY = e.clientY;
+    });
+
+    window.addEventListener('mouseup', () => this.isDragging = false);
+
+    window.addEventListener('mousemove', (e) => {
+      if (!this.isDragging) return;
+      const deltaX = e.clientX - this.lastMouseX;
+      const deltaY = e.clientY - this.lastMouseY;
+
+      this.lastMouseX = e.clientX;
+      this.lastMouseY = e.clientY;
+
+      this.angleY -= deltaX * 0.01;
+      this.angleX += deltaY * 0.01;
+    });
   }
 
   initShaderProgram(gl, vs, fs) {
