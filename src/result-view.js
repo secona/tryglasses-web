@@ -1,4 +1,12 @@
-import { mat4Create, mat4Perspective } from "./mat4.js";
+import {
+  mat4Translate,
+  mat4Create,
+  mat4Perspective,
+  mat4Mul,
+  mat4RotateX,
+  mat4RotateY,
+  mat4RotateZ,
+} from "./mat4.js";
 
 const vsSource = `#version 300 es
   in vec4 aVertexPosition;
@@ -127,8 +135,26 @@ export class ResultView {
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
     // render head & glasses
+    const IMG_SIZE = 224;
+    const aspect = 1.0;
+    const fov = 2 * Math.atan(IMG_SIZE / (2 * cameraFocal));
+
     const proj = mat4Create();
-    mat4Perspective(proj, 45, canvas.width / canvas.height, 0.1, 100.0);
+    const f = 1.0 / Math.tan(fov / 2);
+    const near = 0.1;
+    const far = 100.0;
+
+    proj[0] = f / aspect;
+    proj[5] = f;
+    proj[10] = (far + near) / (near - far);
+    proj[11] = -1;
+    proj[14] = (2 * far * near) / (near - far);
+    proj[15] = 0;
+
+    const offsetX = (cameraCenter / IMG_SIZE) * 2 - 1;
+    const offsetY = (cameraCenter / IMG_SIZE) * 2 - 1;
+    proj[8] = -offsetX;
+    proj[9] = -offsetY;
 
     gl.useProgram(this.meshProgram);
     gl.uniformMatrix4fv(this.uniformLocations.proj, false, proj);
@@ -144,16 +170,17 @@ export class ResultView {
 
     // render head
     gl.colorMask(false, false, false, false);
-    this.objectManager.head.tz = -6;
 
     setAttr(this.attribLocations.pos, this.headBuffers.pos, 3);
     setAttr(this.attribLocations.texCoord, this.headBuffers.texCoord, 2);
 
-    gl.uniformMatrix4fv(
-      this.uniformLocations.mv,
-      false,
-      this.objectManager.head.getModelMatrix(),
-    );
+    const headModel = mat4Create();
+    mat4RotateZ(headModel, angle[2]);
+    mat4RotateY(headModel, angle[1]);
+    mat4RotateX(headModel, angle[0]);
+    mat4Translate(headModel, trans[0], trans[1], trans[2] - cameraDist);
+
+    gl.uniformMatrix4fv(this.uniformLocations.mv, false, headModel);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.headTexture);
     gl.drawArrays(gl.TRIANGLES, 0, this.headBuffers.count);
@@ -163,11 +190,10 @@ export class ResultView {
     setAttr(this.attribLocations.pos, this.glassesBuffers.pos, 3);
     setAttr(this.attribLocations.texCoord, this.glassesBuffers.texCoord, 2);
 
-    gl.uniformMatrix4fv(
-      this.uniformLocations.mv,
-      false,
-      this.objectManager.glasses.getModelMatrix(),
-    );
+    const glassesModel = this.objectManager.glasses.getLocalMatrix();
+    mat4Mul(glassesModel, headModel, glassesModel);
+
+    gl.uniformMatrix4fv(this.uniformLocations.mv, false, glassesModel);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.glassesTexture);
     gl.drawArrays(gl.TRIANGLES, 0, this.glassesBuffers.count);
@@ -261,7 +287,14 @@ export class ResultView {
     this.img = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, this.img);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.objectManager.headData.img);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      this.objectManager.headData.img,
+    );
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
