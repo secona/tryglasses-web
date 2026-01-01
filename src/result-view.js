@@ -25,6 +25,30 @@ const fsSource = `#version 300 es
   }
 `;
 
+const texVsSource = `#version 300 es
+  in vec2 aPosition;
+  in vec2 aTexCoord;
+  out vec2 vTexCoord;
+
+  void main() {
+    vTexCoord = aTexCoord;
+    gl_Position = vec4(aPosition, 0.0, 1.0);
+  }
+`;
+
+const texFsSource = `#version 300 es
+  precision highp float;
+  in vec2 vTexCoord;
+  out vec4 fragColor;
+  uniform sampler2D uTexture;
+  uniform float uOpacity;
+        
+  void main() {
+    vec4 texColor = texture(uTexture, vTexCoord);
+    fragColor = vec4(texColor.rgb, texColor.a * uOpacity);
+  }
+`;
+
 export class ResultView {
   constructor(objectManager) {
     const canvas = document.getElementById("render-canvas");
@@ -60,6 +84,10 @@ export class ResultView {
     const gl = this.gl;
     const canvas = this.canvas;
 
+    const headData = this.objectManager.headData;
+    const { trans, angle, cameraFocal, cameraCenter, cameraDist } =
+      headData.recon;
+
     const dpr = window.devicePixelRatio || 1;
     const displayWidth = Math.round(canvas.clientWidth * dpr);
     const displayHeight = Math.round(canvas.clientHeight * dpr);
@@ -70,14 +98,39 @@ export class ResultView {
     }
 
     gl.viewport(0, 0, canvas.width, canvas.height);
-    gl.clearColor(0.1, 0.1, 0.1, 1.0);
-    gl.enable(gl.DEPTH_TEST);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+    // render background image
+    const quadVertices = new Float32Array([
+      -1, -1, 0, 0, 1, -1, 1, 0, -1, 1, 0, 1, 1, 1, 1, 1,
+    ]);
+    const quadBuffer = gl.createBuffer();
+
+    gl.useProgram(this.texProgram);
+    gl.disable(gl.DEPTH_TEST);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    const texLocs = this.texLocs;
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, quadVertices, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(texLocs.position);
+    gl.vertexAttribPointer(texLocs.position, 2, gl.FLOAT, false, 16, 0);
+    gl.enableVertexAttribArray(texLocs.texCoord);
+    gl.vertexAttribPointer(texLocs.texCoord, 2, gl.FLOAT, false, 16, 8);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.img);
+    gl.uniform1i(texLocs.texture, 0);
+    gl.uniform1f(texLocs.opacity, 1);
+
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+    // render head & glasses
     const proj = mat4Create();
     mat4Perspective(proj, 45, canvas.width / canvas.height, 0.1, 100.0);
 
-    gl.useProgram(this.program);
+    gl.useProgram(this.meshProgram);
     gl.uniformMatrix4fv(this.uniformLocations.proj, false, proj);
 
     const setAttr = (loc, buf, size) => {
@@ -86,41 +139,99 @@ export class ResultView {
       gl.enableVertexAttribArray(loc);
     };
 
-    if (this.objectManager.head) {
-      this.objectManager.head.tz = -6;
+    gl.enable(gl.DEPTH_TEST);
+    gl.clear(gl.DEPTH_BUFFER_BIT);
 
-      setAttr(this.attribLocations.pos, this.headBuffers.pos, 3);
-      setAttr(this.attribLocations.texCoord, this.headBuffers.texCoord, 2);
+    // render head
+    gl.colorMask(false, false, false, false);
+    this.objectManager.head.tz = -6;
 
-      gl.uniformMatrix4fv(
-        this.uniformLocations.mv,
-        false,
-        this.objectManager.head.getModelMatrix(),
-      );
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, this.headTexture);
-      gl.drawArrays(gl.TRIANGLES, 0, this.headBuffers.count);
+    setAttr(this.attribLocations.pos, this.headBuffers.pos, 3);
+    setAttr(this.attribLocations.texCoord, this.headBuffers.texCoord, 2);
 
-      if (this.objectManager.glasses) {
-        setAttr(this.attribLocations.pos, this.glassesBuffers.pos, 3);
-        setAttr(this.attribLocations.texCoord, this.glassesBuffers.texCoord, 2);
+    gl.uniformMatrix4fv(
+      this.uniformLocations.mv,
+      false,
+      this.objectManager.head.getModelMatrix(),
+    );
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.headTexture);
+    gl.drawArrays(gl.TRIANGLES, 0, this.headBuffers.count);
 
-        gl.uniformMatrix4fv(
-          this.uniformLocations.mv,
-          false,
-          this.objectManager.glasses.getModelMatrix(),
-        );
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.glassesTexture);
-        gl.drawArrays(gl.TRIANGLES, 0, this.glassesBuffers.count);
-      }
-    }
+    // render glasses
+    gl.colorMask(true, true, true, true);
+    setAttr(this.attribLocations.pos, this.glassesBuffers.pos, 3);
+    setAttr(this.attribLocations.texCoord, this.glassesBuffers.texCoord, 2);
+
+    gl.uniformMatrix4fv(
+      this.uniformLocations.mv,
+      false,
+      this.objectManager.glasses.getModelMatrix(),
+    );
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.glassesTexture);
+    gl.drawArrays(gl.TRIANGLES, 0, this.glassesBuffers.count);
   }
 
   run() {
     const gl = this.gl;
 
     this.modal.style.display = "flex";
+
+    function compileShader(source, type) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        console.error("Shader compilation error:", gl.getShaderInfoLog(shader));
+        gl.deleteShader(shader);
+        return null;
+      }
+
+      return shader;
+    }
+
+    function createProgram(vertSource, fragSource) {
+      const vertShader = compileShader(vertSource, gl.VERTEX_SHADER);
+      const fragShader = compileShader(fragSource, gl.FRAGMENT_SHADER);
+
+      const program = gl.createProgram();
+      gl.attachShader(program, vertShader);
+      gl.attachShader(program, fragShader);
+      gl.linkProgram(program);
+
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        console.error("Program linking error:", gl.getProgramInfoLog(program));
+        return null;
+      }
+
+      return program;
+    }
+
+    const meshProgram = this.initShaderProgram(gl, vsSource, fsSource);
+    this.meshProgram = meshProgram;
+
+    const texProgram = createProgram(texVsSource, texFsSource);
+    this.texProgram = texProgram;
+
+    this.attribLocations = {
+      pos: gl.getAttribLocation(meshProgram, "aVertexPosition"),
+      texCoord: gl.getAttribLocation(meshProgram, "aTextureCoord"),
+    };
+
+    this.uniformLocations = {
+      proj: gl.getUniformLocation(meshProgram, "uProjectionMatrix"),
+      mv: gl.getUniformLocation(meshProgram, "uModelViewMatrix"),
+      sampler: gl.getUniformLocation(meshProgram, "uSampler"),
+    };
+
+    this.texLocs = {
+      position: gl.getAttribLocation(texProgram, "aPosition"),
+      texCoord: gl.getAttribLocation(texProgram, "aTexCoord"),
+      texture: gl.getUniformLocation(texProgram, "uTexture"),
+      opacity: gl.getUniformLocation(texProgram, "uOpacity"),
+    };
 
     const redraw = () => {
       requestAnimationFrame(() => this.drawScene());
@@ -147,19 +258,14 @@ export class ResultView {
       );
     }
 
-    const program = this.initShaderProgram(gl, vsSource, fsSource);
-    this.program = program;
-
-    this.attribLocations = {
-      pos: gl.getAttribLocation(program, "aVertexPosition"),
-      texCoord: gl.getAttribLocation(program, "aTextureCoord"),
-    };
-
-    this.uniformLocations = {
-      proj: gl.getUniformLocation(program, "uProjectionMatrix"),
-      mv: gl.getUniformLocation(program, "uModelViewMatrix"),
-      sampler: gl.getUniformLocation(program, "uSampler"),
-    };
+    this.img = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, this.img);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.objectManager.headData.img);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
     this.drawScene();
   }
