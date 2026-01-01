@@ -34,7 +34,7 @@ const fsSource = `#version 300 es
 `;
 
 export class MainView {
-  constructor() {
+  constructor(objectManager) {
     const canvas = document.getElementById("glCanvas");
     this.canvas = canvas;
 
@@ -48,7 +48,6 @@ export class MainView {
     const program = this.initShaderProgram(gl, vsSource, fsSource);
     this.program = program;
 
-    const objectManager = new ObjectManager(gl);
     this.objectManager = objectManager;
 
     this.attribLocations = {
@@ -150,11 +149,7 @@ export class MainView {
     }
   }
 
-  async load(controls) {
-    await this.objectManager.loadGlasses(
-      "/assets/45-oculos/oculos.obj",
-      "/assets/45-oculos/glasses.png",
-    );
+  load(controls) {
     this.glassesBuffers = initBuffers(this.gl, this.objectManager.glasses.obj);
     this.glassesTexture = loadTexture(this.gl, this.objectManager.glasses.texMap);
 

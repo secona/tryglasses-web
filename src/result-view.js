@@ -1,5 +1,5 @@
 export class ResultView {
-  constructor() {
+  constructor(objectManager) {
     const canvas = document.getElementById("render-canvas");
     this.canvas = canvas;
 
@@ -8,6 +8,8 @@ export class ResultView {
 
     const modal = document.getElementById("render-modal");
     this.modal = modal;
+
+    this.objectManager = objectManager;
 
     document.getElementById("btn-close-modal").addEventListener("click", () => {
       modal.style.display = "none";
