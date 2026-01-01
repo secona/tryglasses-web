@@ -155,8 +155,8 @@ export class ResultView {
     proj[14] = (2 * far * near) / (near - far);
     proj[15] = 0;
 
-    const offsetX = (cameraCenter / IMG_SIZE) * 2 - 1;
-    const offsetY = (cameraCenter / IMG_SIZE) * 2 - 1;
+    const offsetX = (cameraCenter[0] / IMG_SIZE) * 2 - 1;
+    const offsetY = (cameraCenter[0] / IMG_SIZE) * 2 - 1;
     proj[8] = -offsetX;
     proj[9] = -offsetY;
 
