@@ -70,8 +70,6 @@ function initShaderProgram(gl, vs, fs) {
 }
 
 const state = {
-  head: null,
-  oculos: null,
   sceneManager: new SceneManager(),
   angleX: 0,
   angleY: 0,
