@@ -103,6 +103,20 @@
       ></canvas>
     </div>
 
+    <div id="render-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50" style="display: none;">
+      <div class="bg-base-200 rounded-xl p-6 max-w-4xl max-h-[90vh] overflow-auto shadow-2xl">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold">Rendered Result</h2>
+          <button id="btn-close-modal" class="btn btn-sm btn-circle btn-ghost">✕</button>
+        </div>
+        <canvas id="render-canvas" width="600" height="600" class="border border-base-300 bg-black"></canvas>
+        <div class="mt-4 flex gap-2">
+          <button id="btn-save-render" class="btn btn-primary">Save Image</button>
+          <button id="btn-close-modal-2" class="btn btn-ghost">Close</button>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="src/main.js"></script>
   </body>
 </html>

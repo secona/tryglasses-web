@@ -8,7 +8,7 @@ const state = {
   controls: new Controls(),
 };
 
-state.mainView.load(state.controls);
+await state.mainView.load(state.controls);
 state.mainView.run();
 
 state.controls.subscribeRender(() => {

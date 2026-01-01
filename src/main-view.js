@@ -1,4 +1,4 @@
-import { SceneManager, SceneObject }  from "./scene.js";
+import { ObjectManager }  from "./object.js";
 import { HeadData } from "./head.js";
 import {
   mat4Create,
@@ -48,8 +48,8 @@ export class MainView {
     const program = this.initShaderProgram(gl, vsSource, fsSource);
     this.program = program;
 
-    const sceneManager = new SceneManager(gl);
-    this.sceneManager = sceneManager;
+    const objectManager = new ObjectManager(gl);
+    this.objectManager = objectManager;
 
     this.attribLocations = {
       pos: gl.getAttribLocation(program, "aVertexPosition"),
@@ -107,9 +107,10 @@ export class MainView {
       gl.useProgram(this.program);
       gl.uniformMatrix4fv(this.uniformLocations.proj, false, proj);
 
-      this.sceneManager.translateGlasses(this.glassesX, this.glassesY, this.glassesZ);
-      this.sceneManager.rotateHead(this.angleX, -this.angleY);
-      this.sceneManager.draw(this);
+      this.objectManager.translateGlasses(this.glassesX, this.glassesY, this.glassesZ);
+      this.objectManager.rotateHead(this.angleX, -this.angleY);
+
+      this.drawScene();
 
       requestAnimationFrame(draw);
     }
@@ -117,14 +118,50 @@ export class MainView {
     requestAnimationFrame(draw);
   }
 
-  load(controls) {
-    this.sceneManager.loadGlasses(
+  drawScene() {
+    const gl = this.gl;
+
+    const setAttr = (loc, buf, size) => {
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(loc);
+    };
+
+    if (this.objectManager.head) {
+      this.objectManager.head.tz = -6;
+
+      setAttr(this.attribLocations.pos, this.headBuffers.pos, 3);
+      setAttr(this.attribLocations.texCoord, this.headBuffers.texCoord, 2);
+
+      gl.uniformMatrix4fv(this.uniformLocations.mv, false, this.objectManager.head.getModelMatrix());
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, this.headTexture);
+      gl.drawArrays(gl.TRIANGLES, 0, this.headBuffers.count);
+
+      if (this.objectManager.glasses) {
+        setAttr(this.attribLocations.pos, this.glassesBuffers.pos, 3);
+        setAttr(this.attribLocations.texCoord, this.glassesBuffers.texCoord, 2);
+
+        gl.uniformMatrix4fv(this.uniformLocations.mv, false, this.objectManager.glasses.getModelMatrix());
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, this.glassesTexture);
+        gl.drawArrays(gl.TRIANGLES, 0, this.glassesBuffers.count);
+      }
+    }
+  }
+
+  async load(controls) {
+    await this.objectManager.loadGlasses(
       "/assets/45-oculos/oculos.obj",
       "/assets/45-oculos/glasses.png",
     );
+    this.glassesBuffers = initBuffers(this.gl, this.objectManager.glasses.obj);
+    this.glassesTexture = loadTexture(this.gl, this.objectManager.glasses.texMap);
 
     controls.subscribeLoadData((headData) => {
-      this.sceneManager.loadHead(headData);
+      this.objectManager.loadHead(headData);
+      this.headBuffers = initBuffers(this.gl, headData.obj);
+      this.headTexture = loadTexture(this.gl, headData.texMap);
     });
 
     controls.subscribeGlasses((data) => {
@@ -188,3 +225,61 @@ export class MainView {
     return prog;
   }
 }
+
+function initBuffers(gl, data) {
+  const createBuf = (type, d) => {
+    const b = gl.createBuffer();
+    gl.bindBuffer(type, b);
+    gl.bufferData(type, d, gl.STATIC_DRAW);
+    return b;
+  };
+  return {
+    pos: createBuf(gl.ARRAY_BUFFER, new Float32Array(data.positions)),
+    texCoord: createBuf(gl.ARRAY_BUFFER, new Float32Array(data.texCoords)),
+    count: data.positions.length / 3,
+  };
+}
+
+function loadTexture(gl, url) {
+  const texture = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+
+  const level = 0;
+  const internalFormat = gl.RGBA;
+  const width = 1;
+  const height = 1;
+  const border = 0;
+  const srcFormat = gl.RGBA;
+  const srcType = gl.UNSIGNED_BYTE;
+  const pixel = new Uint8Array([0, 0, 255, 255]);
+  gl.texImage2D(
+    gl.TEXTURE_2D,
+    level,
+    internalFormat,
+    width,
+    height,
+    border,
+    srcFormat,
+    srcType,
+    pixel,
+  );
+
+  const image = new Image();
+  image.onload = () => {
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      level,
+      internalFormat,
+      srcFormat,
+      srcType,
+      image,
+    );
+    gl.generateMipmap(gl.TEXTURE_2D);
+  };
+  image.src = url;
+
+  return texture;
+}
+
