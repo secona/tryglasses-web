@@ -8,7 +8,15 @@ Ensure the following software is installed on your local environment before proc
 - Node.js: Version 22.21.1
 - NPM: Version 10.9.4
 
-## Installation
+## Usage
+
+### HRN Inference
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/secona/tryglasses-web/blob/master/notebooks/hrn_head_reconstruction.ipynb)
+
+We provide the notebook for HRN inference at [`notebooks/hrn_head_reconstruction.ipynb`](notebooks/hrn_head_reconstruction.ipynb). The authors run the notebook using Google Colab. Use this notebook to transform your 2D image to data for the frontend WebGL using HRN-based head reconstruction.
+
+### Frontend WebGL
 
 1. Clone the repository to your local machine.
 2. Navigate to the project directory.
@@ -16,8 +24,6 @@ Ensure the following software is installed on your local environment before proc
    ```bash
    npm install
    ```
-
-## Usage
 
 To start the local development server:
 
