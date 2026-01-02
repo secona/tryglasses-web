@@ -1,4 +1,4 @@
-# TryGlasses
+# TryGlasses: Virtual Eyewear Simulation on Portrait Images
 
 ![system design](./docs/system-design.png)
 
