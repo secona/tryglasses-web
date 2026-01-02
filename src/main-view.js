@@ -1,3 +1,4 @@
+import Stats from 'stats.js';
 import { ObjectManager }  from "./object.js";
 import { HeadData } from "./head.js";
 import {
@@ -69,6 +70,14 @@ export class MainView {
     this.glassesX = 0;
     this.glassesY = 0;
     this.glassesZ = 0;
+
+    const stats = new Stats();
+    stats.showPanel(0);
+    stats.dom.style.position = 'absolute';
+    stats.dom.style.top = '0px';
+    stats.dom.style.right = '0px';
+    document.getElementById('canvas-container').appendChild(stats.dom);
+    this.stats = stats;
   }
 
   run() {
@@ -88,6 +97,7 @@ export class MainView {
     }
 
     const draw = () => {
+      this.stats.begin();
       resize(gl, canvas);
 
       gl.clearColor(0.1, 0.1, 0.1, 1.0);
@@ -111,6 +121,7 @@ export class MainView {
 
       this.drawScene();
 
+      this.stats.end();
       requestAnimationFrame(draw);
     }
 
