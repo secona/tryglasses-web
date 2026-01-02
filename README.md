@@ -60,6 +60,7 @@ This project uses external assets.
 Thank you to the following for their contributions and resources:
 - The developers of the open-source libraries used in this project.
 - The creators of the 3D assets.
+- The authors of [Hierarchical Representation Network (HRN)](https://github.com/youngLBW/HRN)
 
 ## License
 
