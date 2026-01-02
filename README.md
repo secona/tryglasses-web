@@ -31,6 +31,12 @@ This project uses external assets.
 
 ### 3D Models
 - https://free3d.com/3d-model/frame-glasses-314946.html
+- https://free3d.com/3d-model/heart-glasses-v1--264833.html
+- https://free3d.com/3d-model/snowflakes-v1--581116.html
+
+### Textures
+- https://ambientcg.com/view?id=Ground080
+- https://ambientcg.com/view?id=Onyx015
 
 ### Portrait Examples
 - https://commons.wikimedia.org/wiki/File:Abraham_Lincoln_O-77_matte_collodion_print.jpg

@@ -160,10 +160,12 @@ export class MainView {
     }
   }
 
-  load(controls) {
+  loadGlasses() {
     this.glassesBuffers = initBuffers(this.gl, this.objectManager.glasses.obj);
     this.glassesTexture = loadTexture(this.gl, this.objectManager.glasses.texMap);
+  }
 
+  load(controls) {
     controls.subscribeLoadData((headData) => {
       this.objectManager.loadHead(headData);
       this.headBuffers = initBuffers(this.gl, headData.obj);

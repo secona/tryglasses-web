@@ -190,17 +190,19 @@ export class ResultView {
     gl.drawArrays(gl.TRIANGLES, 0, this.headBuffers.count);
 
     // render glasses
-    gl.colorMask(true, true, true, true);
-    setAttr(this.attribLocations.pos, this.glassesBuffers.pos, 3);
-    setAttr(this.attribLocations.texCoord, this.glassesBuffers.texCoord, 2);
+    if (this.objectManager.glasses) {
+      gl.colorMask(true, true, true, true);
+      setAttr(this.attribLocations.pos, this.glassesBuffers.pos, 3);
+      setAttr(this.attribLocations.texCoord, this.glassesBuffers.texCoord, 2);
 
-    const glassesModel = this.objectManager.glasses.getLocalMatrix();
-    mat4Mul(glassesModel, headModel, glassesModel);
+      const glassesModel = this.objectManager.glasses.getLocalMatrix();
+      mat4Mul(glassesModel, headModel, glassesModel);
 
-    gl.uniformMatrix4fv(this.uniformLocations.mv, false, glassesModel);
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, this.glassesTexture);
-    gl.drawArrays(gl.TRIANGLES, 0, this.glassesBuffers.count);
+      gl.uniformMatrix4fv(this.uniformLocations.mv, false, glassesModel);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, this.glassesTexture);
+      gl.drawArrays(gl.TRIANGLES, 0, this.glassesBuffers.count);
+    }
   }
 
   run() {

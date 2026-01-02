@@ -4,11 +4,13 @@ export class Controls {
   constructor() {
     this.loadSubs = [];
     this.glassesSubs = [];
+    this.selectGlassesSubs = [];
     this.renderSubs = [];
 
     const dataInput = document.getElementById("file-data");
     const loadBtn = document.getElementById("btn-load");
     const renderBtn = document.getElementById("btn-render");
+    const glassesSelect = document.getElementById("glasses-selector");
 
     loadBtn.addEventListener("click", async () => {
       const dataFile = dataInput.files[0];
@@ -32,6 +34,12 @@ export class Controls {
     renderBtn.addEventListener("click", () => {
       for (const sub of this.renderSubs) {
         sub();
+      }
+    });
+
+    glassesSelect.addEventListener("change", (e) => {
+      for (const sub of this.selectGlassesSubs) {
+        sub(e.target.value);
       }
     });
 
@@ -79,5 +87,9 @@ export class Controls {
 
   subscribeRender(fn) {
     this.renderSubs.push(fn);
+  }
+
+  subscribeSelectGlasses(fn) {
+    this.selectGlassesSubs.push(fn);
   }
 }

@@ -13,23 +13,37 @@ export class ObjectManager {
   constructor() {
     this.head = null;
     this.glasses = null;
+    this.glassesKV = {};
   }
 
-  async loadGlasses(objURL, texURL) {
+  async loadGlasses(name, objURL, texURL) {
     try {
       const objResponse = await fetch(objURL);
       const objString = await objResponse.text();
       const obj = parseOBJ(objString);
 
-      this.glasses = new MyObject(obj, texURL);
+      const glasses = new MyObject(obj, texURL);
+      this.glassesKV[name] = glasses;
     } catch (error) {
       console.error("Error loading glasses:", error);
+    }
+  }
+
+  selectGlasses(name) {
+    if (this.glassesKV[name]) {
+      console.log("selecting", name);
+      this.glasses = this.glassesKV[name];
     }
   }
 
   async loadHead(headData) {
     try {
       this.headData = headData;
+
+      if (this.glasses && this.glasses.parent) {
+        this.glasses.parent = null;
+      }
+      
       this.head = new MyObject(headData.obj, headData.texMap);
 
       if (this.glasses) {
