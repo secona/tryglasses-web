@@ -4,13 +4,9 @@
 
 TryGlasses is a web application designed to simulate wearing eyewear using 3D rendering.
 
-## Prerequisites
-
-Ensure the following software is installed on your local environment before proceeding:
-- Node.js: Version 22.21.1
-- NPM: Version 10.9.4
-
 ## Usage
+
+There are two distinct steps for TryGlasses: (1) HRN Inference for head reconstruction and (2) Interactive 3D view with WebGL.
 
 ### HRN Inference
 
@@ -19,6 +15,14 @@ Ensure the following software is installed on your local environment before proc
 We provide the notebook for HRN inference at [`notebooks/hrn_head_reconstruction.ipynb`](notebooks/hrn_head_reconstruction.ipynb). The authors run the notebook using Google Colab. Use this notebook to transform your 2D image to data for the frontend WebGL using HRN-based head reconstruction.
 
 ### Frontend WebGL
+
+#### Prerequisites
+
+Ensure the following software is installed on your local environment before proceeding:
+- Node.js: Version 22.21.1
+- NPM: Version 10.9.4
+
+#### Steps
 
 1. Clone the repository to your local machine.
 2. Navigate to the project directory.
