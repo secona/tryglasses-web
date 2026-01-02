@@ -48,3 +48,11 @@ This project uses external assets.
 Thank you to the following for their contributions and resources:
 - The developers of the open-source libraries used in this project.
 - The creators of the 3D assets.
+
+## License
+
+This project's source code (frontend WebGL logic and notebook scripts) is released under the MIT License.
+
+> [!IMPORTANT]
+> While the source code in this repository is permissive, the inference backend relies on third-party
+> libraries (such as `nvdiffrast`) with strict licensing constraints. See each of them to know more.
