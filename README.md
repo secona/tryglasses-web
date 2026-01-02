@@ -1,5 +1,7 @@
 # TryGlasses
 
+![system design](./docs/system-design.png)
+
 TryGlasses is a web application designed to simulate wearing eyewear using 3D rendering.
 
 ## Prerequisites
