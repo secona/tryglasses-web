@@ -33,6 +33,47 @@ To start the local development server:
 npm run dev
 ```
 
+## Deploy on NixOS at localhost:9000
+
+See [`nix/configuration.nix`](nix/configuration.nix) for a commented example.
+
+Put this repository (including `flake.lock`) at `/srv/tryglasses-web` on the server.
+With Nix flakes enabled, add the following to `/etc/nixos/configuration.nix`, merging
+it with your existing configuration:
+
+```nix
+{ ... }:
+let
+  tryglasses = builtins.getFlake "path:/srv/tryglasses-web";
+in
+{
+  imports = [ tryglasses.nixosModules.default ];
+  services.tryglasses-web.enable = true;
+}
+```
+
+Apply it:
+
+```bash
+sudo nixos-rebuild switch
+```
+
+For a flake-based system, keep your usual `--flake ...` argument and add `--impure`
+to allow the local checkout import.
+
+The production build is served by nginx at **http://localhost:9000** on the server
+and starts automatically on boot. Change `services.tryglasses-web.port` to use a
+different port.
+
+To view it from your own computer, forward the server's local port:
+
+```bash
+ssh -L 9000:127.0.0.1:9000 user@server
+```
+
+Then open http://localhost:9000 locally. To build the static files separately,
+run `nix build path:.` from the repository; the files will be in `result/`.
+
 ## Attributions
 
 This project uses external assets.

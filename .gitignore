@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Nix build outputs
+/result
+/result-*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
